@@ -1,16 +1,43 @@
+# -*- coding: utf-8 -*-
+import BeautifulSoup
+import urlparse
+import requests
+import pprint
 import yaml
 import glob
 import os
-import urlparse
 
-SOURCECODE = open('apikey.txt').read().strip()
 
-def get_degree_status(degreeId, sourcecode):
+sourcecode = open('apikey.txt').read().strip()
+
+
+def get_degree_status(degreeId):
+    """
+    return True, False or None (if the api call fails for some reason)
+    for a given degreeId.
+    """ 
+
+    global sourcecode
 
     URI = "http://api.elearners.com/directoryws.asmx/GetDegreeStatus?sourcecode=%(sourcecode)s&degreeId=%(degreeId)s"
 
     url = URI % {'degreeId': degreeId, 'sourcecode': sourcecode}
-    return url
+    resp = requests.get(url)
+
+    if resp.status_code == 200:
+        # resp.content should look something like:
+        #   <?xml version="1.0" encoding="utf-8"?>
+        #   <boolean xmlns="http://elearners.com/">true</boolean>
+
+        soup = BeautifulSoup.BeautifulStoneSoup(resp.content)
+        txt = soup.find('boolean').getText()
+
+        if txt == 'true':
+            return True
+        elif txt == 'false':
+            return False
+    else:
+        return None
 
 
 
@@ -44,6 +71,11 @@ def find_yaml_files(path):
 
 
 def parse_yaml_files(files):
+    """
+    input: a list of YAML files
+    output: a list of data, as parsed from the YAML files
+    """
+
     dataset = []
     for file in files:
         stream = open(file)
@@ -52,7 +84,7 @@ def parse_yaml_files(files):
     return dataset
 
 
-def process_yaml_record(data):
+def process_yaml_data(data):
     """
     processes a YAML file and returns an array of 'program' hashes filtering
     out all programs which have 'hide: true' set at the program level or at the
@@ -102,40 +134,53 @@ def process_yaml_record(data):
 if __name__ == '__main__':
     yaml_files = find_yaml_files('./')
     yaml_objects = parse_yaml_files(yaml_files)
+    # yaml_objects is an array, each array element contains one YAML files'
+    # worth of data
 
     for yaml_obj in yaml_objects:
-        # yaml_obj represents a single file, which contains 1 or more top level
-        # 'college' blocks
+        # A single YAML file might contain multiple colleges, each with
+        # multiple degrees, or it may contain only a single college with one
+        # degree.
 
-        programs = process_yaml_record(yaml_obj)
+        degrees = process_yaml_data(yaml_obj)
 
-        for p in programs:
+        # TODO: Some cleanup and then SEND EMAIL to Dale
 
-            print p['college']
-            print p['program']
-            print p['url']
-            print p['degID']
+        for degree in degrees:
 
-
-
-#        print len(yaml_obj)
-#        print len(d), len(process_yaml_record(d))
-#        foo = process_yaml_record(d)
+            degree_status = get_degree_status(degree['degID'])
+            print [degree_status, degree['college'], degree['program']]
 
 
 
-#    for d in dataset:
-#        print len(d)
-#        for record in d
-#            print process_yaml_record(record)
-#            for records in process_yaml_record(d):
-#            pass
-#            print records
-#            print '\n'
-#            print len(records)
-#            for r in records:
-#                print(type(r))
-#            for record in records:
-#                print record['college']
+
+
+
+
+
+
+        # note: there could be more than one degree per college, and more than
+        # one college per yaml_obj.  example 'degrees' list:
+        #   [
+        #     {
+        #       "url": "http://nursingdegreesguide.elearners.com/drx.htm?&degID=8211",
+        #       "program": "Post-Bachelor Certificate - Nursing Ed & Faculty",
+        #       "college": "drexel-university-online",
+        #       "degID": "8211"
+        #     },
+        #     {
+        #       "url": "http://nursingdegreesguide.elearners.com/drx.htm?&degID=8212",
+        #       "program": "Post-Bachelor Certificate - Innovation Adv Nursing",
+        #       "college": "drexel-university-online",
+        #       "degID": "8212"
+        #     },
+        #     {
+        #       "url": "http://nursingdegreesguide.elearners.com/chap.htm?&degID=13844",
+        #       "program": "Certificate - Mother-Baby",
+        #       "college": "brandman-university",
+        #       "degID": "13844"
+        #     }
+        #   ]
+
 
 

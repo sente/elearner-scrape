@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import BeautifulSoup
 import urlparse
-import requests
+#import requests this has to run on python 2.4...
+import urllib
 import pprint
 import yaml
 import glob
@@ -9,6 +10,7 @@ import os
 
 
 sourcecode = open('apikey.txt').read().strip()
+
 
 
 def get_degree_status(degreeId):
@@ -22,22 +24,33 @@ def get_degree_status(degreeId):
     URI = "http://api.elearners.com/directoryws.asmx/GetDegreeStatus?sourcecode=%(sourcecode)s&degreeId=%(degreeId)s"
 
     url = URI % {'degreeId': degreeId, 'sourcecode': sourcecode}
-    resp = requests.get(url)
+    resp = urllib.urlopen(url)
 
-    if resp.status_code == 200:
-        # resp.content should look something like:
-        #   <?xml version="1.0" encoding="utf-8"?>
-        #   <boolean xmlns="http://elearners.com/">true</boolean>
-
-        soup = BeautifulSoup.BeautifulStoneSoup(resp.content)
-        txt = soup.find('boolean').getText()
-
-        if txt == 'true':
+    try:
+        content = resp.read()
+        if '<boolean xmlns="http://elearners.com/">true</boolean>' in content:
             return True
-        elif txt == 'false':
+        elif '<boolean xmlns="http://elearners.com/">false</boolean>' in content:
             return False
-    else:
+        else:
+            return None
+    except:
         return None
+
+#    if resp.status_code == 200:
+#        # resp.content should look something like:
+#        #   <?xml version="1.0" encoding="utf-8"?>
+#        #   <boolean xmlns="http://elearners.com/">true</boolean>
+#
+#        soup = BeautifulSoup.BeautifulStoneSoup(resp.content)
+#        txt = soup.find('boolean').getText()
+#
+#        if txt == 'true':
+#            return True
+#        elif txt == 'false':
+#            return False
+#    else:
+#        return None
 
 
 
@@ -149,7 +162,8 @@ if __name__ == '__main__':
         for degree in degrees:
 
             degree_status = get_degree_status(degree['degID'])
-            print [degree_status, degree['college'], degree['program']]
+            if degree_status == False:
+                print [degree_status, degree['college'], degree['program'], degree['url']]
 
 
 

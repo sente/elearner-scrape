@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-import BeautifulSoup
 import urlparse
 #import requests this has to run on python 2.4...
+#import BeautifulSoup # this has to be run on python 2.4...
 import urllib
 import pprint
 import yaml
 import glob
 import os
+
+from compat import parse_qsl
 
 
 sourcecode = open('apikey.txt').read().strip()
@@ -62,7 +64,7 @@ def get_query_args(url):
         {'degID': 10268, 'foo': 'bar'}
     """
 
-    return dict(urlparse.parse_qsl(url))
+    return dict(parse_qsl(url))
 
 
 def find_yaml_files(path):
@@ -73,7 +75,7 @@ def find_yaml_files(path):
     """
 
     yaml_files = []
-    for (root,dir,files) in os.walk('./'):
+    for (root,dir,files) in os.walk(path):
         for f in files:
             if f.endswith('.yaml'):
                 full_filepath = os.path.join(root,f)
@@ -145,7 +147,7 @@ def process_yaml_data(data):
     return res
 
 if __name__ == '__main__':
-    yaml_files = find_yaml_files('./')
+    yaml_files = find_yaml_files('/home/nursing')
     yaml_objects = parse_yaml_files(yaml_files)
     # yaml_objects is an array, each array element contains one YAML files'
     # worth of data
@@ -163,7 +165,7 @@ if __name__ == '__main__':
 
             degree_status = get_degree_status(degree['degID'])
             if degree_status == False:
-                print [degree_status, degree['college'], degree['program'], degree['url']]
+                print '\t'.join([degree['url'], degree['college'], degree['program']])
 
 
 
